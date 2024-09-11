@@ -1,0 +1,43 @@
+default:
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - docker info
+
+stages:
+  - linter
+  - build
+  - deploy-staging
+  - deploy-production
+
+go-linter:
+  stage: build
+  image: golangci/golangci-lint:v1.61.0
+  script:
+    - golangci-lint run -v
+    
+
+build-backend:
+  stage: build
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+
+deploy-backend:
+  stage: deploy-staging
+  script:
+    - kubectl config use-context interview/k8s-agents:staging
+    - kubectl config set-context --current --namespace default
+    - helm upgrade --install -f k8s/interview_task/values.yaml --set image.tag=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA interview-task ./k8s/interview_task
+
+deploy-backend:
+  stage: deploy-production
+  rules:
+    - changes:
+        - proxy-enabler/**/*
+  script:
+    - kubectl config use-context interview/k8s-agents:prod
+    - kubectl config set-context --current --namespace interview_task
+    - helm upgrade --install -f k8s/interview_task/values.yaml --set image.tag=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA interview-task ./k8s/interview_task

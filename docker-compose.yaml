@@ -1,0 +1,24 @@
+services:
+  backend:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=:3000
+      - DATABASE_NAME=interview
+      - DATABASE_USER=test
+      - DATABASE_PASSWORD=test
+      - DATABASE_ADDRESS=tcp(db:3306)
+  
+  db:
+    image: mysql:9.0
+    restart: always
+    volumes:
+      - /var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=test
+      - MYSQL_DATABASE=interview
+      - MYSQL_USER=test
+      - MYSQL_PASSWORD=test
